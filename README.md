@@ -133,9 +133,6 @@ A synthetic data generator (`01b_generate_sample_data.py`) is included as a fall
 
 Full methodology, literature review, and results are documented in the accompanying research paper (`paper/` or root `.tex` file — Part 01).
 
-## 📜 License
-
-Specify your license here (e.g., MIT).
 
 ---
 *MacroEdtech — Team GenAI Research 2026*
