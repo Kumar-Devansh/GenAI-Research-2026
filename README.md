@@ -1,4 +1,4 @@
-# 🌦️ AI-Based Weather Prediction System — Indian Southwest Monsoon (Part 01)
+# 🌦️ Development of an Intelligent Multi-Modal Weather Intelligence and Climate Decision Support Platform Integrating Machine Learning, Deep Learning, Computer Vision, Remote Sensing, Retrieval-Augmented Generation (RAG), AI Agents, and Large Language Models (Part 01)
 
 **MacroEdtech — Team GenAI Research 2026**
 *Phase 02: Demonstration of Technical Skills*
