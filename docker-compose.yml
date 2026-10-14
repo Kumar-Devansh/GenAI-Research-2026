@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+  ui:
+    build: .
+    command: streamlit run scripts/app.py --server.address 0.0.0.0
+    ports: ["8501:8501"]
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434

@@ -1,0 +1,1 @@
+{"cols": ["temp_max", "temp_min", "temp_mean", "rainfall", "rain", "wind_speed", "humidity", "pressure", "cloud_cover", "doy_sin", "doy_cos"], "target": "temp_mean", "window": 14, "kind": "GRU"}
