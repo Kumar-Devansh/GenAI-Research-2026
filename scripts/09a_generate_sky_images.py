@@ -20,14 +20,14 @@ with real Sentinel-2 image download code.
 """
 
 
+from common import DATA_DIR, prepare_dirs
 import numpy as np
 import cv2
-import os
 
 np.random.seed(42)
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-IMG_DIR = os.path.join(SCRIPT_DIR, "..", "data", "sky_images")
+IMG_DIR = DATA_DIR / "sky_images"
+prepare_dirs(IMG_DIR)
 
 CATEGORIES = ["clear_sky", "partly_cloudy", "heavy_clouds"]
 IMAGES_PER_CATEGORY = 150
@@ -35,31 +35,24 @@ IMG_SIZE = 64  # 64x64 pixels - kept small for faster training on CPU
 
 
 for category in CATEGORIES:
-    os.makedirs(os.path.join(IMG_DIR, category), exist_ok=True)
+    (IMG_DIR / category).mkdir(parents=True, exist_ok=True)
 
 def generate_cloud_image(cloud_density):
-   """
- cloud_density: from 0.0 (clear sky) to 1.0 (heavy clouds)
- Generates a Perlin-noise-like pattern using multiple
- layers of smoothed random noise to create a realistic
- cloud-like texture.
-"""
-
-
-# Base sky color (blue gradient - similar to a clear sky)
-
+    """Create one procedural BGR sky image for a cloud-density range of 0–1."""
     img = np.zeros((IMG_SIZE, IMG_SIZE, 3), dtype=np.float32)
     sky_blue = np.array([235, 206, 135])  # BGR format (OpenCV uses BGR)
     img[:, :] = sky_blue
 
-  # Add multi-scale noise layers to create a cloud-like texture
+    # Add multi-scale noise layers to create a cloud-like texture.
     cloud_layer = np.zeros((IMG_SIZE, IMG_SIZE), dtype=np.float32)
     for scale in [4, 8, 16, 32]:
         small = np.random.rand(scale, scale).astype(np.float32)
         upscaled = cv2.resize(small, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_CUBIC)
         cloud_layer += upscaled / scale
 
-    cloud_layer = (cloud_layer - cloud_layer.min()) / (cloud_layer.max() - cloud_layer.min())
+    spread = cloud_layer.max() - cloud_layer.min()
+    if spread > 0:
+        cloud_layer = (cloud_layer - cloud_layer.min()) / spread
 
     # Cloud density threshold - higher density means more pixels will be "cloudy"
     cloud_mask = (cloud_layer > (1 - cloud_density)).astype(np.float32)
@@ -69,7 +62,7 @@ def generate_cloud_image(cloud_density):
     for c in range(3):
         img[:, :, c] = img[:, :, c] * (1 - cloud_mask * 0.85) + white[c] * (cloud_mask * 0.85)
 
-# Add a small amount of random noise (similar to sensor noise in realistic satellite images)
+    # Add a small amount of noise to vary the generated examples.
     noise = np.random.normal(0, 8, img.shape)
     img = np.clip(img + noise, 0, 255).astype(np.uint8)
 
@@ -87,8 +80,9 @@ for category, (low, high) in density_ranges.items():
     for i in range(IMAGES_PER_CATEGORY):
         density = np.random.uniform(low, high)
         img = generate_cloud_image(density)
-        filepath = os.path.join(IMG_DIR, category, f"{category}_{i:03d}.png")
-        cv2.imwrite(filepath, img)
+        filepath = IMG_DIR / category / f"{category}_{i:03d}.png"
+        if not cv2.imwrite(str(filepath), img):
+            raise OSError(f"Could not write generated image: {filepath}")
         total_generated += 1
 
 print(f"Total {total_generated} synthetic sky images generated in: {IMG_DIR}")

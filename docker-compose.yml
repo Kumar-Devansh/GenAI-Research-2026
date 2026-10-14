@@ -1,12 +1,45 @@
 services:
   api:
     build: .
-    ports: ["8000:8000"]
+    ports:
+      - "8000:8000"
     environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      IMD_API_AUTH_HEADER: ${IMD_API_AUTH_HEADER:-}
+      IMD_API_AUTH_VALUE: ${IMD_API_AUTH_VALUE:-}
+      IMD_STATION_ID: ${IMD_STATION_ID:-}
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+      - ./vectordb:/app/vectordb
+      - ./knowledge:/app/knowledge
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
   ui:
     build: .
-    command: streamlit run scripts/app.py --server.address 0.0.0.0
-    ports: ["8501:8501"]
+    command: ["streamlit", "run", "scripts/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+    ports:
+      - "8501:8501"
     environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      IMD_API_AUTH_HEADER: ${IMD_API_AUTH_HEADER:-}
+      IMD_API_AUTH_VALUE: ${IMD_API_AUTH_VALUE:-}
+      IMD_STATION_ID: ${IMD_STATION_ID:-}
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+      - ./vectordb:/app/vectordb
+      - ./knowledge:/app/knowledge
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped

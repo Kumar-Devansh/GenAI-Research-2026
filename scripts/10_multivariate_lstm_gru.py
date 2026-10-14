@@ -18,7 +18,9 @@ df = pd.read_csv(RAW)
 date_col = next(c for c in df.columns if "date" in c.lower() or "time" in c.lower())
 df[date_col] = pd.to_datetime(df[date_col])
 df = df.sort_values(date_col).set_index(date_col)
-feat = df.select_dtypes("number").interpolate().dropna()
+# Do not interpolate across future rows before splitting. Forward-fill only
+# carries information already available at each date; leading gaps are removed.
+feat = df.select_dtypes("number").ffill().dropna()
 
 # target column: mean temperature (change here if your column name differs)
 target = next(c for c in feat.columns if "temp" in c.lower() and "mean" in c.lower())

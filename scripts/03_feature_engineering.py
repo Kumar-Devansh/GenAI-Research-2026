@@ -11,11 +11,11 @@ We will create the target: Predicting tomorrow's rainfall (1-day-ahead forecast)
 """
 
 
+from common import DATA_DIR, load_weather
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv("../data/delhi_weather_raw.csv", parse_dates=["date"])
-df = df.sort_values("date").reset_index(drop=True)
+df = load_weather(DATA_DIR / "delhi_weather_raw.csv")
 
 # ---- 1. DATE-BASED FEATURES ----
 df["month"] = df["date"].dt.month
@@ -65,7 +65,7 @@ after = len(df)
 print(f"Rows before cleaning: {before}, after: {after} (removed {before-after} rows with missing values)")
 
 # ---- SAVE FEATURES ----
-df.to_csv("../data/delhi_weather_features.csv", index=False)
-print(f"Feature-engineered data saved: ../data/delhi_weather_features.csv")
+df.to_csv(DATA_DIR / "delhi_weather_features.csv", index=False)
+print(f"Feature-engineered data saved: {DATA_DIR / 'delhi_weather_features.csv'}")
 print(f"Total features: {df.shape[1]} columns, {df.shape[0]} rows")
 print("\nColumns:", list(df.columns))

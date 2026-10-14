@@ -11,11 +11,13 @@ In this step, we understand the data:
   """
 
 
+from common import DATA_DIR, OUTPUT_DIR, load_weather, prepare_dirs
 import pandas as pd
 import matplotlib.pyplot as plt
 
 # ---- DATA LOAD  ----
-df = pd.read_csv("../data/delhi_weather_raw.csv", parse_dates=["date"])
+df = load_weather(DATA_DIR / "delhi_weather_raw.csv")
+prepare_dirs(OUTPUT_DIR)
 print("Shape (rows, columns):", df.shape)
 print("\n--- Missing Values ---")
 print(df.isnull().sum())
@@ -52,8 +54,8 @@ axes[2].set_ylabel("Avg Rainfall (mm)")
 axes[2].set_xticks(range(1, 13))
 
 plt.tight_layout()
-plt.savefig("../outputs/eda_plots.png", dpi=120)
-print("\nGraphs save ho gaye: ../outputs/eda_plots.png")
+plt.savefig(OUTPUT_DIR / "eda_plots.png", dpi=150, bbox_inches="tight")
+print(f"\nGraphs saved: {OUTPUT_DIR / 'eda_plots.png'}")
 
 # ---- CORRELATION HEATMAP (which feature related to which) ----
 import numpy as np
@@ -73,5 +75,5 @@ for i in range(len(numeric_cols)):
 plt.colorbar(im)
 plt.title("Correlation Heatmap")
 plt.tight_layout()
-plt.savefig("../outputs/correlation_heatmap.png", dpi=120)
-print("Correlation heatmap save ho gaya: ../outputs/correlation_heatmap.png")
+plt.savefig(OUTPUT_DIR / "correlation_heatmap.png", dpi=150, bbox_inches="tight")
+print(f"Correlation heatmap saved: {OUTPUT_DIR / 'correlation_heatmap.png'}")

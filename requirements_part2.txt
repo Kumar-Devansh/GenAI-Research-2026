@@ -1,14 +1,11 @@
-pandas
-numpy
-scikit-learn
-matplotlib
-joblib
-tensorflow
-ultralytics
-chromadb
-sentence-transformers
-ollama
-fastapi
-uvicorn
-streamlit
-requests
+-r requirements.txt
+
+# Additional packages for the optional Part 02 components.
+ultralytics>=8.0,<9.0
+chromadb>=0.4,<2.0
+sentence-transformers>=2.2,<6.0
+ollama>=0.3,<1.0
+fastapi>=0.100,<1.0
+uvicorn[standard]>=0.23,<1.0
+streamlit>=1.35,<2.0
+pypdf>=4.0,<6.0

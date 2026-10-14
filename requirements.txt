@@ -1,0 +1,12 @@
+# Part 01 forecasting and image-classification pipeline; Python 3.10-3.12.
+numpy>=1.24,<2.0
+pandas>=2.0,<3.0
+matplotlib>=3.7,<4.0
+scikit-learn>=1.3,<2.0
+requests>=2.31,<3.0
+joblib>=1.3,<2.0
+xgboost>=2.0,<3.0
+statsmodels>=0.14,<1.0
+prophet>=1.1.5,<2.0
+tensorflow>=2.15,<2.20
+opencv-python-headless>=4.8,<5.0
