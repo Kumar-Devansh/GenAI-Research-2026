@@ -5,10 +5,14 @@ information about it. This allows you to "look inside" the model
 and understand how it works.
 """
 
+from common import MODEL_DIR
 import joblib
 
 # Load the model
-model = joblib.load("../models/gradient_boosting.pkl")
+model_path = MODEL_DIR / "gradient_boosting.pkl"
+if not model_path.is_file():
+    raise FileNotFoundError(f"Trained model not found: {model_path}. Run scripts/04_train_ml_models.py first.")
+model = joblib.load(model_path)
 
 print("Model type:", type(model))
 print("\nModel parameters:")

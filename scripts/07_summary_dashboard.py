@@ -9,34 +9,30 @@ POLISHED PAGE for use in presentations and reports.
 """
 
 
+from common import DATA_DIR, OUTPUT_DIR, load_weather, prepare_dirs
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import os
-
-# ---- ROBUST PATH HANDLING ----
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(SCRIPT_DIR, "..", "data")
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "outputs")
 
 # ---- DATA LOAD  ----
-df = pd.read_csv(os.path.join(DATA_DIR, "delhi_weather_raw.csv"), parse_dates=["date"])
+df = load_weather(DATA_DIR / "delhi_weather_raw.csv")
+prepare_dirs(OUTPUT_DIR)
 df["month"] = df["date"].dt.month
 
-ml_results = pd.read_csv(os.path.join(OUTPUT_DIR, "model_comparison.csv"))
-ts_results = pd.read_csv(os.path.join(OUTPUT_DIR, "timeseries_model_comparison.csv"))
+def required_results(filename):
+    path = OUTPUT_DIR / filename
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing {path}. Run the model training scripts before building the dashboard.")
+    return pd.read_csv(path)
 
-dl_path = os.path.join(OUTPUT_DIR, "deep_learning_comparison.csv")
-dl_results = pd.read_csv(dl_path) if os.path.exists(dl_path) else None
+ml_results = required_results("model_comparison.csv")
+ts_results = required_results("timeseries_model_comparison.csv")
 
-# CNN accuracy - if the training results file is not available, use the hardcoded (last known) value.
-
-# You can update this number with the result from your CNN run,
-
-# or improve the code to save the results to a CSV file.
-
-CNN_ACCURACY = 0.989
+dl_path = OUTPUT_DIR / "deep_learning_comparison.csv"
+dl_results = pd.read_csv(dl_path) if dl_path.exists() else None
+cnn_path = OUTPUT_DIR / "cnn_classification_comparison.csv"
+cnn_results = pd.read_csv(cnn_path) if cnn_path.exists() else None
 
 # ---- FIGURE SETUP: 4x2 grid layout (expanded for 4 model families) ----
 
@@ -65,8 +61,11 @@ if dl_results is not None:
     best_dl = dl_results.sort_values("RMSE").iloc[0]
     cards.append(("Best Deep Learning", f"{best_dl['Model']} (R²={best_dl['R2']:.3f})", "#8e44ad"))
 else:
-    cards.append(("Deep Learning", "LSTM/GRU (R²≈0.92)", "#8e44ad"))
-cards.append(("CNN Image Classifier", f"{CNN_ACCURACY*100:.1f}% accuracy", "#16a085"))
+    cards.append(("Deep Learning", "Not run", "#8e44ad"))
+if cnn_results is not None:
+    cards.append(("CNN Test Accuracy", f"{cnn_results.iloc[0]['Accuracy']*100:.1f}%", "#16a085"))
+else:
+    cards.append(("CNN Classifier", "Not run", "#16a085"))
 
 card_width = 1.0 / len(cards)
 for i, (label, value, color) in enumerate(cards):
@@ -118,7 +117,7 @@ all_colors = [all_colors[i] for i in sort_idx]
 bars = ax2.barh(all_models, all_r2, color=all_colors)
 ax2.set_title("All Models: R² Comparison", fontweight="bold", fontsize=12)
 ax2.set_xlabel("R² Score (higher = better)")
-ax2.set_xlim(0, 1)
+ax2.set_xlim(min(-0.1, float(min(all_r2)) - 0.05), max(1.0, float(max(all_r2)) + 0.08))
 ax2.tick_params(axis='y', labelsize=8)
 for bar, val in zip(bars, all_r2):
     ax2.text(val + 0.02, bar.get_y() + bar.get_height()/2, f"{val:.2f}",
@@ -145,17 +144,18 @@ ax3.set_title("Feature Correlation Heatmap", fontweight="bold", fontsize=12)
 # ==== 5. CNN / COMPUTER VISION SUMMARY ====
 ax4 = fig.add_subplot(gs[2, 1])
 ax4.axis("off")
-cv_text = (
-    "COMPUTER VISION MODULE\n\n"
-    f"Task: Sky/cloud image classification\n"
-    f"Model: CNN (3 Conv2D + MaxPooling blocks)\n"
-    f"Classes: clear_sky, partly_cloudy, heavy_clouds\n"
-    f"Dataset: 450 images (150 per class)\n"
-    f"Test Accuracy: {CNN_ACCURACY*100:.1f}%\n\n"
-    f"Note: Trained on synthetic sky imagery as a\n"
-    f"proof-of-concept; methodology directly extends\n"
-    f"to real Sentinel-2/MODIS satellite tiles."
-)
+cv_text = "COMPUTER VISION MODULE\n\n"
+if cnn_results is not None:
+    cv_text += (
+        "Task: Sky/cloud image classification\n"
+        "Model: CNN (3 Conv2D + MaxPooling blocks)\n"
+        "Classes: clear_sky, partly_cloudy, heavy_clouds\n"
+        "Dataset: generated synthetic imagery\n"
+        f"Held-out test accuracy: {cnn_results.iloc[0]['Accuracy']*100:.1f}%\n\n"
+    )
+else:
+    cv_text += "CNN results unavailable. Run 09a and 09b to train and evaluate.\n\n"
+cv_text += "Synthetic-image proof of concept only; results do not establish performance on real satellite imagery."
 ax4.text(0.05, 0.95, cv_text, transform=ax4.transAxes, fontsize=10.5,
           va="top", ha="left", linespacing=1.8,
           bbox=dict(boxstyle="round,pad=0.8", facecolor="#e8f6f3", edgecolor="#16a085"))
@@ -164,19 +164,15 @@ ax4.text(0.05, 0.95, cv_text, transform=ax4.transAxes, fontsize=10.5,
 ax5 = fig.add_subplot(gs[3, :])
 ax5.axis("off")
 insight_text = (
-    f"KEY RESEARCH FINDING ACROSS ALL FOUR MODEL FAMILIES\n\n"
-    f"Multivariate models that incorporate auxiliary atmospheric features (humidity, pressure, lag values) "
-    f"consistently outperform univariate models relying only on temperature's own historical values.\n"
-    f"ML models (using engineered features): R² = {best_ml['R2']:.3f}   |   "
-    f"Deep Learning sequence models (LSTM/GRU, temperature sequence only): R² ≈ 0.90-0.92   |   "
-    f"Classical univariate time-series (ARIMA/SARIMA/Prophet): R² = {best_ts['R2']:.3f}\n\n"
-    f"This demonstrates that (a) auxiliary meteorological variables carry substantial predictive power, and "
-    f"(b) non-linear sequence models (LSTM/GRU) partially compensate for the lack of auxiliary features by "
-    f"learning complex temporal patterns that simple statistical models (ARIMA/SARIMA) cannot capture."
+    "RESULTS CONTEXT\n\n"
+    f"Best ML: {best_ml['Model']} (R²={best_ml['R2']:.3f}, RMSE={best_ml['RMSE']:.3f}°C)\n"
+    f"Best univariate time-series: {best_ts['Model']} (R²={best_ts['R2']:.3f}, RMSE={best_ts['RMSE']:.3f}°C)\n"
+    + (f"Best sequence model: {best_dl['Model']} (R²={best_dl['R2']:.3f}, RMSE={best_dl['RMSE']:.3f}°C)\n" if dl_results is not None else "Sequence models were not run.\n")
+    + "Compare forecast scores only when the holdout dates and target definition match. CNN accuracy is a separate image-classification task."
 )
 ax5.text(0.02, 0.85, insight_text, transform=ax5.transAxes, fontsize=10.5,
           va="top", ha="left", linespacing=2.0, wrap=True,
           bbox=dict(boxstyle="round,pad=1.0", facecolor="#fff8e7", edgecolor="#d4a017"))
 
-plt.savefig(os.path.join(OUTPUT_DIR, "part01_summary_dashboard.png"), dpi=150, bbox_inches="tight")
-print(f"Dashboard saved: {os.path.join(OUTPUT_DIR, 'part01_summary_dashboard.png')}")
+plt.savefig(OUTPUT_DIR / "part01_summary_dashboard.png", dpi=180, bbox_inches="tight")
+print(f"Dashboard saved: {OUTPUT_DIR / 'part01_summary_dashboard.png'}")

@@ -1,0 +1,8 @@
+-r requirements.txt
+
+# Streamlit UI and the existing RAG/assistant integrations used by its pages.
+streamlit>=1.35,<2.0
+chromadb>=0.4,<2.0
+sentence-transformers>=2.2,<6.0
+ollama>=0.3,<1.0
+pypdf>=4.0,<6.0

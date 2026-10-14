@@ -19,6 +19,7 @@ It follows a realistic Delhi monsoon pattern:
   """
   
 
+from common import DATA_DIR, prepare_dirs
 import numpy as np
 import pandas as pd
 
@@ -65,6 +66,8 @@ df = pd.DataFrame({
     "cloud_cover": cloud_cover.round(1),
 })
 
-df.to_csv("../data/delhi_weather_raw.csv", index=False)
-print(f"Sample data ready: {len(df)} rows -> ../data/delhi_weather_raw.csv")
+prepare_dirs(DATA_DIR)
+output = DATA_DIR / "delhi_weather_raw.csv"
+df.to_csv(output, index=False)
+print(f"SYNTHETIC sample data ready: {len(df)} rows -> {output} (this overwrites the raw CSV)")
 print(df.head())

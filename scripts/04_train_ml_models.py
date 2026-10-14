@@ -15,6 +15,7 @@ Metrics: MAE, RMSE, R² (metrics mentioned in the PDF)
 """
 
 
+from common import DATA_DIR, MODEL_DIR, OUTPUT_DIR, load_weather, prepare_dirs
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,7 +27,8 @@ import xgboost as xgb
 import joblib
 
 # ---- DATA LOAD  ----
-df = pd.read_csv("../data/delhi_weather_features.csv", parse_dates=["date"])
+df = load_weather(DATA_DIR / "delhi_weather_features.csv", ("date", "target_temp_next_day", "target_rainfall_next_day"))
+prepare_dirs(MODEL_DIR, OUTPUT_DIR)
 
 # ---- SEPARATE FEATURES (X) AND TARGET (y) ----
 
@@ -34,8 +36,10 @@ df = pd.read_csv("../data/delhi_weather_features.csv", parse_dates=["date"])
 
 feature_cols = [c for c in df.columns if c not in
                  ["date", "target_temp_next_day", "target_rainfall_next_day"]]
-X = df[feature_cols]
+X = df[feature_cols].apply(pd.to_numeric, errors="coerce")
 y = df["target_temp_next_day"]
+if X.isna().any().any() or y.isna().any():
+    raise ValueError("Feature data contains missing or non-numeric values; rerun feature engineering.")
 
 # ---- TRAIN-TEST SPLIT ----
 
@@ -45,10 +49,17 @@ y = df["target_temp_next_day"]
 
 # Therefore: first 80% (older data) for training, last 20% (recent data) for testing.
 
-split_idx = int(len(df) * 0.8)
-X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
-y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
-dates_test = df["date"].iloc[split_idx:]
+raw_dates = pd.to_datetime(pd.read_csv(DATA_DIR / "delhi_weather_raw.csv", usecols=["date"])["date"])
+if len(raw_dates) < 5:
+    raise ValueError("At least five daily observations are required for a chronological holdout.")
+holdout_start = raw_dates.iloc[int(len(raw_dates) * 0.8)]
+target_dates = df["date"] + pd.Timedelta(days=1)
+test_mask = target_dates >= holdout_start
+X_train, X_test = X.loc[~test_mask], X.loc[test_mask]
+y_train, y_test = y.loc[~test_mask], y.loc[test_mask]
+dates_test = target_dates.loc[test_mask]
+if X_train.empty or X_test.empty:
+    raise ValueError("Unable to form non-empty chronological train/test sets from feature data.")
 
 print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
 
@@ -90,7 +101,7 @@ for name, model in models.items():
     print(f"  MAE: {mae:.3f}°C | RMSE: {rmse:.3f}°C | R²: {r2:.3f}")
 
     # Best model save karenge baad mein
-    joblib.dump(model, f"../models/{name.replace(' ', '_').lower()}.pkl")
+    joblib.dump(model, MODEL_DIR / f"{name.replace(' ', '_').lower()}.pkl")
 
 # ---- RESULTS COMPARISON TABLE ----
 results_df = pd.DataFrame(results).sort_values("RMSE")
@@ -98,7 +109,7 @@ print("\n" + "=" * 60)
 print("FINAL MODEL COMPARISON (sorted by RMSE - lower is better)")
 print("=" * 60)
 print(results_df.to_string(index=False))
-results_df.to_csv("../outputs/model_comparison.csv", index=False)
+results_df.to_csv(OUTPUT_DIR / "model_comparison.csv", index=False)
 
 best_model_name = results_df.iloc[0]["Model"]
 print(f"\n🏆 Best Model: {best_model_name}")
@@ -119,5 +130,5 @@ axes[1].set_title("Model Comparison (RMSE - lower is better)")
 axes[1].set_ylabel("RMSE (°C)")
 plt.xticks(rotation=15)
 plt.tight_layout()
-plt.savefig("../outputs/model_results.png", dpi=120)
-print("\nGraphs saved: ../outputs/model_results.png")
+plt.savefig(OUTPUT_DIR / "model_results.png", dpi=150, bbox_inches="tight")
+print(f"\nGraphs saved: {OUTPUT_DIR / 'model_results.png'}")

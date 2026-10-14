@@ -18,37 +18,30 @@ comparison in the research paper.
 """
 
 
+from common import DATA_DIR, OUTPUT_DIR, load_weather, prepare_dirs
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-import warnings
-warnings.filterwarnings("ignore")   # Hiding ARIMA convergence warnings to keep the output clean
-
-
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from prophet import Prophet
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-# ---- ROBUST PATH HANDLING ----
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(SCRIPT_DIR, "..", "data")
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "outputs")
-
 # ---- DATA LOAD  ----
-df = pd.read_csv(os.path.join(DATA_DIR, "delhi_weather_raw.csv"), parse_dates=["date"])
-df = df.sort_values("date").reset_index(drop=True)
+df = load_weather(DATA_DIR / "delhi_weather_raw.csv")
+prepare_dirs(OUTPUT_DIR)
 
 # We will forecast only 'temp_mean' (daily mean temperature).
 series = df.set_index("date")["temp_mean"]
 
-# ---- TRAIN-TEST SPLIT (last 60 days for testing, time-series style) ----
+# ---- CHRONOLOGICAL 80/20 SPLIT (aligned with the other forecasters) ----
 
-TEST_DAYS = 60
-train = series.iloc[:-TEST_DAYS]
-test = series.iloc[-TEST_DAYS:]
-
+split_idx = int(len(series) * 0.8)
+train = series.iloc[:split_idx]
+test = series.iloc[split_idx:]
+TEST_DAYS = len(test)
+if len(series) <= TEST_DAYS + 30:
+    raise ValueError("At least 31 training days plus a holdout are required for time-series models.")
 print(f"Training days: {len(train)}, Testing days: {len(test)}")
 
 results = []
@@ -133,7 +126,7 @@ print("\n" + "=" * 60)
 print("TIME-SERIES MODEL COMPARISON (sorted by RMSE)")
 print("=" * 60)
 print(results_df.to_string(index=False))
-results_df.to_csv(os.path.join(OUTPUT_DIR, "timeseries_model_comparison.csv"), index=False)
+results_df.to_csv(OUTPUT_DIR / "timeseries_model_comparison.csv", index=False)
 
 best_model = results_df.iloc[0]["Model"]
 print(f"\n🏆 Best Time-Series Model: {best_model}")
@@ -156,8 +149,8 @@ axes[1].set_title("Time-Series Model Comparison (RMSE - lower is better)")
 axes[1].set_ylabel("RMSE (°C)")
 
 plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "timeseries_results.png"), dpi=120)
-print(f"\nGraphs saved: {os.path.join(OUTPUT_DIR, 'timeseries_results.png')}")
+plt.savefig(OUTPUT_DIR / "timeseries_results.png", dpi=150, bbox_inches="tight")
+print(f"\nGraphs saved: {OUTPUT_DIR / 'timeseries_results.png'}")
 
 print("""
 NOTE FOR YOUR RESEARCH PAPER:
